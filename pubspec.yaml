@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   firebase_core: ^1.12.0
   firebase_auth: ^3.3.8
-  flex_color_scheme: ^3.0.1
+  cloud_firestore: ^3.1.9
 
 dependency_overrides:
   firebase_auth_platform_interface: 6.1.11

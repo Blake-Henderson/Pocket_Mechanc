@@ -1,21 +1,13 @@
-/*
-  questions for Eric
-  editing/adding onto firebase maps
-  error text not showing up
-  how to make things not ugly/flex color scheme themes
-  different keyboards for input needed for both parts screen and gas screen
-  how close to the UI layout do we have to get
-*/
 import 'dart:html';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // for date formatting
-import 'package:flex_color_scheme/flex_color_scheme.dart'; // for themes
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 //test for data storage
 Map<String, dynamic> carsMap = {
@@ -26,12 +18,12 @@ Map<String, dynamic> carsMap = {
           "Oil and Filter": <String, dynamic>{
             "type": "40 weight synthetic",
             "mileage_left": 1500,
-            "expire_date": DateTime(2022, 12, 31)
+            "expire_date": Timestamp.now()
           },
           "Tires": <String, dynamic>{
             "type": "firestone",
             "mileage_left": 1000,
-            "expire_date": DateTime(2022, 12, 31)
+            "expire_date": Timestamp.now()
           },
         },
         "gas": <DateTime, dynamic>{
@@ -95,10 +87,44 @@ Map<String, dynamic> carsMap = {
       }
     },
 };
+//the defaults for any new car created
+Map <String, dynamic> emptyCarData = {
+  "parts": <String, dynamic>{
+    "Oil and Filter": <String, dynamic>{
+      "type": "default",
+      "mileage_left": 0,
+      "expire_date":Timestamp.now()
+    },
+    "Tires": <String, dynamic>{
+      "type": "default",
+      "mileage_left": 0,
+      "expire_date":Timestamp.now()
+    },
+    "Cabin Filter": <String, dynamic>{
+      "type": "default",
+      "mileage_left": 0,
+      "expire_date":Timestamp.now()
+    },
+    "Air Filter": <String, dynamic>{
+      "type": "default",
+      "mileage_left": 0,
+      "expire_date":Timestamp.now()
+    },
+    "Wipers": <String, dynamic>{
+      "type": "default",
+      "mileage_left": 0,
+      "expire_date":Timestamp.now()
+    },
+  },
+  "gas": <Timestamp, dynamic>{
+  }
+};
 //the name of the car to load on the car screen
 String carName = "";
 //the name of the part to load on the part screen and replace screen
 String part = "";
+//the user's id
+User? user;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -187,6 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: passwordTextBoxController.text,
       );
       errorText = "";
+      user = userCredential.user;
       Navigator.pushNamed(context, '/login/selectCar');
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
@@ -207,6 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
               email: emailTextBoxController.text,
               password: passwordTextBoxController.text);
       errorText = "";
+      user = userCredential.user;
       Navigator.pushNamed(context, '/login/newCar');
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
@@ -297,11 +325,48 @@ class _NewCarScreenState extends State<NewCarScreen> {
   }
 
   Future<void> tryMakeNewCar() async {
-    //implement checking to see if user already has car with that name
-    //and create a car with that name
-    Navigator.pushNamed(context, '/login/car');
+    if(nameTextBoxController.text != "")
+    {
+      //create a car with this name shouldn't in theory overwrite a car with the same name
+      //source/help https://www.androidbugfix.com/2021/12/how-to-update-nested-field-inside.html
+      final serverData = await FirebaseFirestore.instance
+          .collection("user_cars")
+          .doc(user?.uid)
+          .get();
+      if (serverData.exists) {
+        //the actual data to be manipulated
+        final localData = serverData.data() as Map<String, dynamic>;
+        //theoretically get the map of cars data and see if the car name exists in it
+        if (!((localData["cars"] as Map<String, dynamic>).containsKey(nameTextBoxController.text))) {
+          print("in if");
+          //set userdoc cars map[new car name] to the emptyCarData
+          (localData["cars"] as Map<String, dynamic>)[nameTextBoxController.text] = emptyCarData;
+          //push the changes
+          await FirebaseFirestore.instance
+              .collection("user_cars")
+              .doc(user?.uid)
+              .update(localData);
+        }
+      }
+      else {
+        //create the doc layout for a new user
+        final carData = {
+          "cars": <String, dynamic>{
+            nameTextBoxController.text: emptyCarData
+          }
+        };
+        await FirebaseFirestore.instance
+            .collection("user_cars")
+            .doc(user?.uid)
+            .set(carData);
+      }
+      //set car path correctly
+      carName = nameTextBoxController.text;
+      Navigator.pushNamed(context, '/login/car');
+    }
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
@@ -450,19 +515,13 @@ class _CarScreenState extends State<CarScreen> {
                  children: [
                    /* todo add streambuilder
                    parsing the map to get to the individual car's sub-map of parts sub-map of part data also known as the parse to end all parses
-
-                        multiple choice question time: How much caffeine did I consume to figure this out?
-                        A. a reasonable amount
-                        B. a concerning amount
-                        C. enough to kill a normal human
-                        D. enough to kill a small elephant
                   */
                 for(var k in (((carsMap["cars"] as Map <String,dynamic>)
                 [carName] as Map <String,dynamic>)["parts"]).keys)
                     PartButton(
                         k,
                         ((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)["parts"]) as Map <String,dynamic>)[k]as Map <String,dynamic>)["mileage_left"] as int),
-                        ((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)["parts"]) as Map <String,dynamic>)[k]as Map <String,dynamic>)["expire_date"] as DateTime)
+                        ((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)["parts"]) as Map <String,dynamic>)[k]as Map <String,dynamic>)["expire_date"] as Timestamp)
                     )
                  ],
               ),
@@ -482,7 +541,7 @@ class PartButton extends StatelessWidget{
 
   final String partType;
   final int mileage;
-  final DateTime expireDate;
+  final Timestamp expireDate;
 
   @override
   Widget build(BuildContext context) {
@@ -505,7 +564,9 @@ class PartButton extends StatelessWidget{
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Text( "Mileage: " + mileage.toString() +" Expires: " + DateFormat("MMMM d").format(expireDate).toString()),
+                  //this converts the timestamp into datetime for better formatting
+                  child: Text( "Mileage: " + mileage.toString() +" Expires: " + DateFormat("MMMM d").
+                  format(DateTime.fromMicrosecondsSinceEpoch(expireDate.microsecondsSinceEpoch)).toString()),
                 )
               ],
             ),
