@@ -336,7 +336,7 @@ class _NewCarScreenState extends State<NewCarScreen> {
       if (serverData.exists) {
         //the actual data to be manipulated
         final localData = serverData.data() as Map<String, dynamic>;
-        //theoretically get the map of cars data and see if the car name exists in it
+        //get the map of cars data and see if the car name exists in it
         if (!((localData["cars"] as Map<String, dynamic>).containsKey(nameTextBoxController.text))) {
           print("in if");
           //set userdoc cars map[new car name] to the emptyCarData
@@ -402,32 +402,37 @@ class _NewCarScreenState extends State<NewCarScreen> {
   }
 }
 
-class SelectCarScreen extends StatefulWidget {
+class SelectCarScreen extends StatelessWidget {
   const SelectCarScreen({Key? key}) : super(key: key);
 
   @override
-  _SelectCarScreenState createState() => _SelectCarScreenState();
-}
-
-class _SelectCarScreenState extends State<SelectCarScreen> {
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Car'),
-      ),
-      //todo StreamBuilder
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              //parse the map into each button
-              for(var k in (carsMap["cars"] as Map <String,dynamic>).keys)
-                CarButton(k)
-            ],
-          ),
+        appBar: AppBar(
+          title: const Text('Select Car'),
+          centerTitle: true,
         ),
-      ),
+        body: StreamBuilder<DocumentSnapshot>(
+            stream:FirebaseFirestore.instance.collection("user_cars")
+                .doc(user?.uid)
+                .snapshots(),
+            builder: (context, snapshot){
+              if(!snapshot.hasData) return const LinearProgressIndicator();
+
+              final userCarsMap = (snapshot.data?.data() as Map<String, dynamic>)['cars'] as Map<String, dynamic>;
+              return Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        //parse the map into each button
+                        for(var k in (userCarsMap.keys))
+                          CarButton(k)
+                      ],
+                    ),
+                  )
+              );
+            }
+        )
     );
   }
 }
@@ -465,72 +470,73 @@ class CarButton extends StatelessWidget {
   }
 }
 
-class CarScreen extends StatefulWidget {
+class CarScreen extends StatelessWidget {
   const CarScreen({Key? key}) : super(key: key);
-
-  @override
-  _CarScreenState createState() => _CarScreenState();
-}
-
-class _CarScreenState extends State<CarScreen> {
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(carName),
-        centerTitle: true,
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            ListTile(
-              title: const Text("Gas Mileage"),
-              onTap: (){Navigator.pushNamed(context, '/login/car/gas');},
-            ),
-            ListTile(
-              title: const Text("Change Car"),
-              onTap: (){Navigator.pushNamed(context, '/login/selectCar');},
-            ),
-            ListTile(
-              title: const Text("New Car"),
-              onTap: (){Navigator.pushNamed(context, '/login/newCar');},
-            ),
-            ListTile(
-              //ask Eric
-              title: const Text("Exit"),
-              onTap: (){},
-            ),
-          ],
+        appBar: AppBar(
+          title: Text(carName),
+          centerTitle: true,
         ),
-      ),
-      body: Center(
-        child:
-          SizedBox(
-            height: 600,
-            width: 400,
-            child: SingleChildScrollView(
-              child: Column(
-                 children: [
-                   /* todo add streambuilder
-                   parsing the map to get to the individual car's sub-map of parts sub-map of part data also known as the parse to end all parses
-                  */
-                for(var k in (((carsMap["cars"] as Map <String,dynamic>)
-                [carName] as Map <String,dynamic>)["parts"]).keys)
-                    PartButton(
-                        k,
-                        ((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)["parts"]) as Map <String,dynamic>)[k]as Map <String,dynamic>)["mileage_left"] as int),
-                        ((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)["parts"]) as Map <String,dynamic>)[k]as Map <String,dynamic>)["expire_date"] as Timestamp)
-                    )
-                 ],
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              ListTile(
+                title: const Text("Gas Mileage"),
+                onTap: (){Navigator.pushNamed(context, '/login/car/gas');},
               ),
-            ),
-          )
-      ),
+              ListTile(
+                title: const Text("Change Car"),
+                onTap: (){Navigator.pushNamed(context, '/login/selectCar');},
+              ),
+              ListTile(
+                title: const Text("New Car"),
+                onTap: (){Navigator.pushNamed(context, '/login/newCar');},
+              ),
+            ],
+          ),
+        ),
+        body: StreamBuilder<DocumentSnapshot>(
+            stream:FirebaseFirestore.instance.collection("user_cars")
+                .doc(user?.uid)
+                .snapshots(),
+            builder: (context, snapshot){
+              if(!snapshot.hasData) return const LinearProgressIndicator();
+              //get all the way to the parts map just once to make code way more readable
+              final userCarMap = (((snapshot.data?.data()
+              as Map<String, dynamic>)['cars']
+              as Map<String, dynamic>)[carName]
+              as Map <String, dynamic>)["parts"]
+              as Map <String, dynamic>;
+
+              return Center(
+                  child:SizedBox(
+                  height: 600,
+                  width: 400,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            //parse the map into each button
+                            for(var k in (userCarMap.keys))
+                            PartButton(
+                                k,
+                                ((userCarMap[k]as Map <String,dynamic>)["mileage_left"] as int),
+                                ((userCarMap[k]as Map <String,dynamic>)["expire_date"] as Timestamp)
+                            )
+                          ],
+                        ),
+                      )
+                  )
+              );
+            }
+        )
     );
   }
 }
+
 //this button is used by the car screen to display all of the parts for the car
 class PartButton extends StatelessWidget{
  const PartButton(
@@ -587,7 +593,65 @@ class PartScreen extends StatelessWidget {
         title: Text(part),
         centerTitle: true,
       ),
-      body: Center(
+      body:
+      StreamBuilder<DocumentSnapshot>(
+          stream:FirebaseFirestore.instance.collection("user_cars")
+              .doc(user?.uid)
+              .snapshots(),
+          builder: (context, snapshot){
+            if(!snapshot.hasData) return const LinearProgressIndicator();
+            //get all the way to the part map just once to make code way more readable
+            final userPartMap = ((((snapshot.data?.data()
+            as Map<String, dynamic>)['cars']
+            as Map<String, dynamic>)[carName]
+            as Map <String, dynamic>)["parts"]
+            as Map <String, dynamic>)[part]
+            as Map<String, dynamic>;
+            return Center(
+              child: Column(
+                children: [
+                  const Padding(padding: EdgeInsets.all(10)),
+                  const Text("Details:"),
+                  SizedBox(
+                      height: 100,
+                      width: 400,
+                      //a big parse to get the part description
+                      child: Text(userPartMap["type"] as String),
+                  ),
+                  const Padding(padding: EdgeInsets.all(10)),
+                  SizedBox(
+                      height: 50,
+                      width: 400,
+                      //a parse to get the part mileage
+                      child: Text("Mileage Left: " + (userPartMap["mileage_left"] as int).toString()),
+                  ),
+                  const Padding(padding: EdgeInsets.all(10)),
+                  SizedBox(
+                      height: 50,
+                      width: 400,
+                      //a parse to get the part expiration date with conversions from Timestamp to DateTime for formatting
+                      child: Text("Expiration Date:" +
+                          (DateFormat("MMMM d").format(DateTime.fromMicrosecondsSinceEpoch(
+                              (userPartMap["expire_date"] as Timestamp).microsecondsSinceEpoch)
+                          ).toString()),
+                      )
+                  ),
+                  const Padding(padding: EdgeInsets.all(10)),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/login/car/part/replace');
+                      },
+                      child: const Text("Replace"),
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
+      )/*
+      Center(
         child: Column(
           children: [
             const Padding(padding: EdgeInsets.all(10)),
@@ -629,7 +693,7 @@ class PartScreen extends StatelessWidget {
             )
           ],
         ),
-      ),
+      ),*/
     );
   }
 }
