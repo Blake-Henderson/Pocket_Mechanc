@@ -315,19 +315,16 @@ class NewCarScreen extends StatefulWidget {
 
 class _NewCarScreenState extends State<NewCarScreen> {
   late TextEditingController nameTextBoxController;
-  late String errorText;
 
   @override
   void initState() {
     super.initState();
     nameTextBoxController = TextEditingController();
-    errorText = '';
   }
-
+  //tries to add a new car to the user car
   Future<void> tryMakeNewCar() async {
     if(nameTextBoxController.text != "")
     {
-      //create a car with this name shouldn't in theory overwrite a car with the same name
       //source/help https://www.androidbugfix.com/2021/12/how-to-update-nested-field-inside.html
       final serverData = await FirebaseFirestore.instance
           .collection("user_cars")
@@ -338,7 +335,6 @@ class _NewCarScreenState extends State<NewCarScreen> {
         final localData = serverData.data() as Map<String, dynamic>;
         //get the map of cars data and see if the car name exists in it
         if (!((localData["cars"] as Map<String, dynamic>).containsKey(nameTextBoxController.text))) {
-          print("in if");
           //set userdoc cars map[new car name] to the emptyCarData
           (localData["cars"] as Map<String, dynamic>)[nameTextBoxController.text] = emptyCarData;
           //push the changes
@@ -377,6 +373,7 @@ class _NewCarScreenState extends State<NewCarScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const Padding(padding: EdgeInsets.all(5)),
           const Text("What would you like to call this car?"),
           const Padding(padding: EdgeInsets.all(5)),
           SizedBox(
@@ -519,6 +516,7 @@ class CarScreen extends StatelessWidget {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
+                            const Padding(padding: EdgeInsets.all(10)),
                             //parse the map into each button
                             for(var k in (userCarMap.keys))
                             PartButton(
@@ -611,12 +609,11 @@ class PartScreen extends StatelessWidget {
               child: Column(
                 children: [
                   const Padding(padding: EdgeInsets.all(10)),
-                  const Text("Details:"),
                   SizedBox(
-                      height: 100,
+                      height: 50,
                       width: 400,
-                      //a big parse to get the part description
-                      child: Text(userPartMap["type"] as String),
+                      //a parse to get the part description
+                      child: Text("Type: " + userPartMap["type"]),
                   ),
                   const Padding(padding: EdgeInsets.all(10)),
                   SizedBox(
@@ -650,50 +647,7 @@ class PartScreen extends StatelessWidget {
               ),
             );
           }
-      )/*
-      Center(
-        child: Column(
-          children: [
-            const Padding(padding: EdgeInsets.all(10)),
-            SizedBox(
-              height: 100,
-              width: 400,
-              //a big parse to get the part description
-              child: Text(((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)
-              ["parts"]) as Map <String,dynamic>)[part]as Map <String,dynamic>)["type"] as String),
-            )
-            ),
-            const Padding(padding: EdgeInsets.all(10)),
-            SizedBox(
-                height: 50,
-                width: 400,
-                //a big parse to get the part mileage
-                child: Text(((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)
-                ["parts"]) as Map <String,dynamic>)[part]as Map <String,dynamic>)["mileage_left"] as int).toString(),
-                )
-            ),
-            const Padding(padding: EdgeInsets.all(10)),
-            SizedBox(
-                height: 50,
-                width: 400,
-                //a big parse to get the part expiration date with more formatting
-                child: Text(DateFormat("MMMM d").format(((((((carsMap["cars"] as Map <String,dynamic>)[carName] as Map <String,dynamic>)
-                ["parts"]) as Map <String,dynamic>)[part]as Map <String,dynamic>)["expire_date"] as DateTime)).toString(),
-                )
-            ),
-            const Padding(padding: EdgeInsets.all(10)),
-            Align(
-            alignment: Alignment.bottomRight,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login/car/part/replace');
-                },
-                child: const Text("Replace"),
-              ),
-            )
-          ],
-        ),
-      ),*/
+      )
     );
   }
 }
@@ -706,10 +660,125 @@ class ReplaceScreen extends StatefulWidget {
 }
 
 class _ReplaceScreenState extends State<ReplaceScreen> {
+  late TextEditingController descTextBoxController;
+  late TextEditingController milesTextBoxController;
+  late TextEditingController monthsTextBoxController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    descTextBoxController = TextEditingController();
+    milesTextBoxController = TextEditingController();
+    monthsTextBoxController = TextEditingController();
+  }
+//Checks if the input is valid then attempts to override the part for that car
+  Future<void> tryUpdatePart() async{
+    //double check the text boxes have valid data
+    int miles = int.parse(milesTextBoxController.text);
+    int months = int.parse(monthsTextBoxController.text);
+    if(miles > 0 &&  months > 0 && descTextBoxController.text != '') {
+      //get the correct expire date there is probably a better way to do this by adding in the inputted months to the current date.
+      //I have no idea what this would do in a case that would end up in for example the 31st of a month that doesn't have it
+      Timestamp expireDate = Timestamp.fromDate(DateTime(DateTime.now().year, DateTime.now().month + months, DateTime.now().day));
+
+      //source/help https://www.androidbugfix.com/2021/12/how-to-update-nested-field-inside.html
+      final serverData = await FirebaseFirestore.instance
+          .collection("user_cars")
+          .doc(user?.uid)
+          .get();
+      if (serverData.exists) {
+        //the actual data to be manipulated
+        final localData = serverData.data() as Map<String, dynamic>;
+        //some nasty parses to get to the required data to overwrite. I do not use a new variable because I am scared of the results
+        //set the part description
+        ((((localData["cars"]
+        as Map <String, dynamic>)[carName]
+        as Map <String, dynamic>)["parts"]
+        as Map <String, dynamic>)[part]
+        as Map <String, dynamic>)["type"] = descTextBoxController.text;
+        //set miles left
+        ((((localData["cars"]
+        as Map <String, dynamic>)[carName]
+        as Map <String, dynamic>)["parts"]
+        as Map <String, dynamic>)[part]
+        as Map <String, dynamic>)["mileage_left"] = miles;
+        //set expire date
+        ((((localData["cars"]
+        as Map <String, dynamic>)[carName]
+        as Map <String, dynamic>)["parts"]
+        as Map <String, dynamic>)[part]
+        as Map <String, dynamic>)["expire_date"] = expireDate;
+
+        //upload to the server
+        await FirebaseFirestore.instance
+            .collection("user_cars")
+            .doc(user?.uid)
+            .set(localData);
+
+        //go back to the part screen
+        Navigator.pop(context);
+      }
+      else{
+        //user doesn't exist this shouldn't happen
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    throw UnimplementedError();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Replace ' + part),
+        centerTitle: true,
+      ),
+      body:
+          Align(alignment: Alignment.center,
+          child: Column(
+            children: [
+              Text("What specific " + part + " did you put in ?"),
+              SizedBox(
+                width: 400,
+                child: TextField(
+                  controller: descTextBoxController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: "Description",
+                  ),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.all(2)),
+              const Text("How many miles until this part needs to be changed?"),
+              SizedBox(
+                width: 400,
+                child: TextField(
+                  controller: milesTextBoxController,
+                  decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.all(2)),
+              const Text("How many months until this part needs to be changed?"),
+              SizedBox(
+                width: 400,
+                child: TextField(
+                  controller: monthsTextBoxController,
+                  decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.all(2)),
+              ElevatedButton(
+                  onPressed: (){
+                    tryUpdatePart();
+                  },
+                  child: const Text("Replace Part"))
+            ],
+          ),
+          )
+    );
   }
 }
 
