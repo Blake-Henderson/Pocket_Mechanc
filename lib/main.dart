@@ -627,7 +627,7 @@ class PartScreen extends StatelessWidget {
                       height: 50,
                       width: 400,
                       //a parse to get the part expiration date with conversions from Timestamp to DateTime for formatting
-                      child: Text("Expiration Date:" +
+                      child: Text("Expiration Date: " +
                           (DateFormat("MMMM d").format(DateTime.fromMicrosecondsSinceEpoch(
                               (userPartMap["expire_date"] as Timestamp).microsecondsSinceEpoch)
                           ).toString()),
