@@ -9,84 +9,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-//test for data storage
-Map<String, dynamic> carsMap = {
-  "cars": <String, dynamic>
-    {
-      "Blake's Test Car": <String, dynamic>{
-        "parts": <String, dynamic>{
-          "Oil and Filter": <String, dynamic>{
-            "type": "40 weight synthetic",
-            "mileage_left": 1500,
-            "expire_date": Timestamp.now()
-          },
-          "Tires": <String, dynamic>{
-            "type": "firestone",
-            "mileage_left": 1000,
-            "expire_date": Timestamp.now()
-          },
-        },
-        "gas": <DateTime, dynamic>{
-          DateTime(2022, 10, 31): <String, dynamic>{
-            "odometer": 100000,
-            "gas_filled": 5,
-            "mpg": "unknown"
-          },
-          DateTime(2022, 11, 31): <String, dynamic>{
-            "odometer": 100050,
-            "gas_filled": 5,
-            "mpg": 0
-          },
-          DateTime(2022, 12, 31): <String, dynamic>{
-            "odometer": 100150,
-            "gas_filled": 5,
-            "mpg": 0
-          }
-        }
-      },
-      "Ford": <String, dynamic>{
-        "parts": <String, dynamic>{
-          "Oil and Filter": <String, dynamic>{
-            "type": "50 weight synthetic",
-            "mileage_left": 500,
-            "expire_date": DateTime(5, 30, 2022)
-          },
-          "Tires": <String, dynamic>{
-            "type": "Generic",
-            "mileage_left": 100,
-            "expire_date": DateTime(5, 2, 2022)
-          },
-          "Cabin Filter": <String, dynamic>{
-            "type": "Some Brand",
-            "mileage_left": 50,
-            "expire_date": DateTime(2022, 12, 31)
-          },
-          "Wipers": <String, dynamic>{
-            "type": "Factory",
-            "mileage_left": 10000,
-            "expire_date": DateTime(2022, 12, 31)
-          },
-        },
-        "gas": <DateTime, dynamic>{
-          DateTime(2022, 12, 21): <String, dynamic>{
-            "odometer": 100000,
-            "gas_filled": 5,
-            "mpg": "unknown"
-          },
-          DateTime(2022, 12, 30): <String, dynamic>{
-            "odometer": 100050,
-            "gas_filled": 5,
-            "mpg": 0
-          },
-          DateTime(2022, 12, 31): <String, dynamic>{
-            "odometer": 100150,
-            "gas_filled": 5,
-            "mpg": 0
-          }
-        }
-      }
-    },
-};
 //the defaults for any new car created
 Map <String, dynamic> emptyCarData = {
   "parts": <String, dynamic>{
@@ -110,13 +32,13 @@ Map <String, dynamic> emptyCarData = {
       "mileage_left": 0,
       "expire_date":Timestamp.now()
     },
-    "Wipers": <String, dynamic>{
+    "Break Pads": <String, dynamic>{
       "type": "default",
       "mileage_left": 0,
       "expire_date":Timestamp.now()
     },
   },
-  "gas": <Timestamp, dynamic>{
+  "gas": <String, dynamic>{
   }
 };
 //the name of the car to load on the car screen
@@ -357,6 +279,7 @@ class _NewCarScreenState extends State<NewCarScreen> {
             .set(carData);
       }
       //set car path correctly
+
       carName = nameTextBoxController.text;
       Navigator.pushNamed(context, '/login/car');
     }
@@ -508,7 +431,9 @@ class CarScreen extends StatelessWidget {
               as Map<String, dynamic>)[carName]
               as Map <String, dynamic>)["parts"]
               as Map <String, dynamic>;
-
+              //sort the parts in alphabetical order
+              List<String> sorted = userCarMap.keys.toList();
+              sorted.sort();
               return Center(
                   child:SizedBox(
                   height: 600,
@@ -518,11 +443,11 @@ class CarScreen extends StatelessWidget {
                           children: [
                             const Padding(padding: EdgeInsets.all(10)),
                             //parse the map into each button
-                            for(var k in (userCarMap.keys))
+                            for(int i = 0; i < sorted.length; i++)
                             PartButton(
-                                k,
-                                ((userCarMap[k]as Map <String,dynamic>)["mileage_left"] as int),
-                                ((userCarMap[k]as Map <String,dynamic>)["expire_date"] as Timestamp)
+                                sorted[i],
+                                ((userCarMap[sorted[i]]as Map <String,dynamic>)["mileage_left"] as int),
+                                ((userCarMap[sorted[i]]as Map <String,dynamic>)["expire_date"] as Timestamp)
                             )
                           ],
                         ),
@@ -569,7 +494,7 @@ class PartButton extends StatelessWidget{
                 Align(
                   alignment: Alignment.centerRight,
                   //this converts the timestamp into datetime for better formatting
-                  child: Text( "Mileage: " + mileage.toString() +" Expires: " + DateFormat("MMMM d").
+                  child: Text( "Mileage: " + mileage.toString() +" Expires: " + DateFormat("yMMMMd").
                   format(DateTime.fromMicrosecondsSinceEpoch(expireDate.microsecondsSinceEpoch)).toString()),
                 )
               ],
@@ -628,7 +553,7 @@ class PartScreen extends StatelessWidget {
                       width: 400,
                       //a parse to get the part expiration date with conversions from Timestamp to DateTime for formatting
                       child: Text("Expiration Date: " +
-                          (DateFormat("MMMM d").format(DateTime.fromMicrosecondsSinceEpoch(
+                          (DateFormat("yMMMMd").format(DateTime.fromMicrosecondsSinceEpoch(
                               (userPartMap["expire_date"] as Timestamp).microsecondsSinceEpoch)
                           ).toString()),
                       )
@@ -790,18 +715,108 @@ class GasScreen extends StatefulWidget {
 }
 
 class _GasScreenState extends State<GasScreen> {
-  late TextEditingController descTextBoxController;
-  late TextEditingController mileageTextBoxController;
-  late TextEditingController dateTextBoxController;
+  late TextEditingController gasTextBoxController;
+  late TextEditingController odometerTextBoxController;
   String errorText = "";
 
   @override
   void initState() {
     super.initState();
-    descTextBoxController = TextEditingController();
-    TextEditingController mileageTextBoxController = TextEditingController();
-    TextEditingController dateTextBoxController = TextEditingController();
+    gasTextBoxController = TextEditingController();
+    odometerTextBoxController = TextEditingController();
   }
+
+  Future<void> tryAddGas() async{
+    int odometer = int.parse(odometerTextBoxController.text);
+    double gas = double.parse(gasTextBoxController.text);
+    if(odometer > 0 &&  gas > 0) {
+      //source/help https://www.androidbugfix.com/2021/12/how-to-update-nested-field-inside.html
+      final serverData = await FirebaseFirestore.instance
+          .collection("user_cars")
+          .doc(user?.uid)
+          .get();
+      if (serverData.exists) {
+        //the actual data to be manipulated
+        final localData = serverData.data() as Map<String, dynamic>;
+
+        //check and see if the gas map has any values
+        if((((localData['cars']
+        as Map <String, dynamic>)[carName]
+        as Map <String, dynamic>)['gas']
+        as Map<String, dynamic>).isNotEmpty){
+          //convert the map keys to a list and sort it to get the key of the last fill up
+          List<String> keys = (((localData['cars']
+          as Map <String, dynamic>)[carName]
+          as Map <String, dynamic>)['gas']
+          as Map<String, dynamic>).keys.toList();
+          //convert them all to DateTime so they hopefully sort correctly more than likely not needed but better safe than sorry
+          List<DateTime>  sortedKeys= [];
+          for(int i = 0; i < keys.length; i++){
+            sortedKeys.add(DateTime.parse(keys[i]));
+          }
+          sortedKeys.sort();
+          String lastFillUpTime = sortedKeys.last.toString();
+          //get the last fill up's odometer reading and subtract it from the new one to get the distance traveled
+          int distance = odometer - ((((localData['cars']
+          as Map <String, dynamic>)[carName]
+          as Map <String, dynamic>)['gas']
+          as Map <String, dynamic>)[lastFillUpTime]
+          as Map <String, dynamic>)["odometer"] as int;
+          //get mpg
+          double mpg =  distance/gas;
+
+          //subtract the distance from all the car part mileage
+          for(var k in (((localData['cars']
+          as Map <String, dynamic>)[carName]
+          as Map <String, dynamic>)['parts']
+          as Map <String, dynamic>).keys){
+            //grab the parts mileage_left
+            int temp = ((((localData['cars']
+            as Map <String, dynamic>)[carName]
+            as Map <String, dynamic>)['parts']
+            as Map <String, dynamic>)[k]
+            as Map <String, dynamic>)['mileage_left'] as int;
+            //set the new mileage on the part
+            ((((localData['cars']
+            as Map <String, dynamic>)[carName]
+            as Map <String, dynamic>)['parts']
+            as Map <String, dynamic>)[k]
+            as Map <String, dynamic>)['mileage_left'] = temp - distance;
+          }
+
+          //add the new gas added to the map
+          (((localData['cars']
+          as Map <String, dynamic>)[carName]
+          as Map <String, dynamic>)['gas']
+          as Map<String, dynamic>)[DateTime.now().toString()] = <String, dynamic>{
+            "odometer": odometer,
+            "gas_filled": gas,
+            "mpg": mpg
+          };
+        }
+
+        //there are no values in the gas map
+        else{
+          (((localData['cars']
+          as Map <String, dynamic>)[carName]
+          as Map <String, dynamic>)['gas']
+          as Map<String, dynamic>)[DateTime.now().toString()] = <String, dynamic>{
+            "odometer": odometer,
+            "gas_filled": gas,
+            //0 because there is no way to know previous mpg
+            "mpg": 0
+          };
+        }
+
+        //upload to the server
+        await FirebaseFirestore.instance
+            .collection("user_cars")
+            .doc(user?.uid)
+            .set(localData);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -809,9 +824,116 @@ class _GasScreenState extends State<GasScreen> {
         title: const Text("Gas Summary"),
         centerTitle: true,
       ),
-      body: Center(
+      body: StreamBuilder<DocumentSnapshot>(
+        stream:FirebaseFirestore.instance.collection("user_cars")
+        .doc(user?.uid)
+        .snapshots(),
+        builder: (context, snapshot){
+          if(!snapshot.hasData) return const LinearProgressIndicator();
+          //get all the way to the gas map just once to make code way more readable
+          final userGasMap = (((snapshot.data?.data()
+          as Map<String, dynamic>)['cars']
+          as Map<String, dynamic>)[carName]
+          as Map <String, dynamic>)["gas"]
+          as Map <String, dynamic>;
 
-      ),
+          //sort the map in order so they appear in chronological order
+          List<String> keys = userGasMap.keys.toList();
+          //convert them all to DateTime so they hopefully sort correctly more than likely not needed but better safe than sorry
+          List<DateTime>  sortedKeys= [];
+          for(int i = 0; i < keys.length; i++){
+            sortedKeys.add(DateTime.parse(keys[i]));
+          }
+          sortedKeys.sort();
+          return Center(
+            child: Column(
+              children: [SizedBox(
+                width: 400,
+                height: 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      //put all the gas labels in alphabetical order
+                      for(int i = 0; i < sortedKeys.length; i++)
+                        GasLabel(sortedKeys[i], (userGasMap[sortedKeys[i].toString()] as Map <String, dynamic>)["mpg"] as double),
+                    ],
+                  ),
+                ),
+              ),
+                const Padding(padding: EdgeInsets.all(5)),
+                SizedBox(
+                  width: 400,
+                  child: TextField(
+                    controller: gasTextBoxController,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'How many gallons of gas did you add'
+                    ),
+                  ),
+                ),
+                const Padding(padding: EdgeInsets.all(2)),
+                SizedBox(
+                  width: 400,
+                  child: TextField(
+                    controller: odometerTextBoxController,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Current miles on odometer'
+                    ),
+                  ),
+                ),
+                const Padding(padding: EdgeInsets.all(2)),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: ElevatedButton(
+                      onPressed: (){
+                        tryAddGas();
+                      },
+                      child: const Text("Add Gas")) ,
+                )
+              ]
+            )
+          );
+        }
+        )
     );
   }
 }
+
+//used to display the individual entries in the gas map
+class GasLabel extends StatelessWidget{
+  const GasLabel(
+    this.date,
+    this.mpg,
+    {Key? key}): super(key: key);
+
+  final DateTime date;
+  final double mpg;
+
+  @override
+  Widget build(BuildContext context) {
+   return Column(
+     children: [
+       const Padding(padding: EdgeInsets.all(2)),
+       SizedBox(
+         height: 50,
+         width: double.infinity,
+         child: Column(
+           children: [
+             Align(alignment: Alignment.centerLeft,
+             //get the date formatted correctly
+             child: Text(DateFormat("MMMM d").
+             format(date).toString()),
+             ),
+             Align(alignment: Alignment.centerRight,
+               //get the mpg formatted correctly
+               child: Text("Estimated mpg: " + mpg.toStringAsFixed(2)),
+             ),
+           ],
+         ),
+       )
+     ],
+   );
+  }
+}
+

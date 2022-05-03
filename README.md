@@ -1,16 +1,17 @@
 # pocket_mechanic
 
-A new Flutter project.
+For a look at a filled out account log in with these credentials
+email:lifire101@gmail.com
+password:password
 
-## Getting Started
+Known bugs:
+app dies if you hot reload
+weird formatting on most buttons/labels
+no idea what happens if you go offline
+error texts on login page do not appear
+there are no error texts on any other page
+first thing of gas added always shows up as 0.0mpg this is intentional since I have no way of knowing previous gas mileage
+gas screen also just grabs DateTime.now since it is meant to be used the moment you put in the gas
+same for the parts screen
+App is generally ugly
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
