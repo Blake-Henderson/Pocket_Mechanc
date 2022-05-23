@@ -1,4 +1,6 @@
 # pocket_mechanic
+Please note that the firebase server is no longer up, meaning this app will no longer run.
+
 
 For a look at a filled out account log in with these credentials
 email:lifire101@gmail.com
